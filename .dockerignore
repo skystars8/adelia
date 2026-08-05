@@ -1,0 +1,12 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+target
+generated
+data/uploads
+*.pdb
+*.log
+.DS_Store
+Thumbs.db

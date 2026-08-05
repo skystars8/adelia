@@ -1,10 +1,11 @@
-name: CI
+name: Rust build and test
 
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,16 +15,21 @@ env:
 
 jobs:
   rust:
-    name: Format, test, and lint
+    name: Format, build, test, and lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Download repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust build files
+        uses: Swatinem/rust-cache@v2
       - name: Check formatting
         run: cargo fmt --all -- --check
+      - name: Build release application
+        run: cargo build --release --locked
       - name: Run tests
         run: cargo test --all-targets --locked
       - name: Run Clippy

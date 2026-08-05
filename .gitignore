@@ -1,0 +1,14 @@
+/target/
+/generated/*
+!/generated/.gitkeep
+/data/uploads/*
+!/data/uploads/.gitkeep
+.env
+.env.*
+!.env.example
+*.pdb
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
