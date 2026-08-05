@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Audit Rust dependencies
         uses: rustsec/audit-check@v2.0.0
         with:
