@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Pending Approval</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content">
+    <header class="mod-page-header">
+      <h1>Pending Approval</h1>
+      <p>Approve to publish, edit before publishing, or delete to reject.</p>
+    </header>
+    {% if posts %}
+    <div class="mod-post-list">
+    {% for post in posts %}
+      <article class="mod-post-card">
+        <div class="mod-post-heading">
+          <strong>Pending {% if post.is_thread %}thread{% else %}reply{% endif %} /{{ post.board_slug }}/ No.{{ post.id }}</strong>
+          <span>{{ post.created_at }}</span>
+        </div>
+        <p class="intro">
+          {% if post.subject %}<span class="subject">{{ post.subject }}</span>{% endif %}
+          <span class="name">{{ post.name }}</span>{% if post.tripcode %}<span class="tripcode" title="Secure tripcode">!!{{ post.tripcode }}</span>{% endif %}
+          {% if post.file_original_name %}<span class="unimportant">[image: {{ post.file_original_name }}]</span>{% endif %}
+        </p>
+        {% if post.thumb_path %}<a class="mod-pending-thumb" href="/media/{{ post.file_path }}" target="_blank" rel="noopener"><img src="/media/{{ post.thumb_path }}" alt="Pending post image"></a>{% endif %}
+        <div class="mod-post-body">{% if post.body %}{{ post.body }}{% else %}<em>No comment.</em>{% endif %}</div>
+        <div class="action-cell mod-post-actions">
+          {% if not post.is_thread %}<a class="button-link" href="/{{ post.board_slug }}/res/{{ post.root_thread_id }}.html" target="_blank" rel="noopener">View thread</a>{% endif %}
+          <a class="button-link" href="/mod/posts/{{ post.id }}/edit">Edit</a>
+          <form action="/mod/posts/{{ post.id }}/approve" method="post">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="return_to" value="pending">
+            <button type="submit">Approve</button>
+          </form>
+          <form action="/mod/posts/{{ post.id }}/delete" method="post" data-confirm="Reject and permanently delete this pending post?">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="return_to" value="pending">
+            <button class="danger" type="submit">Reject</button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+    </div>
+    {% else %}<p class="centered unimportant">(There are no posts awaiting approval.)</p>{% endif %}
+  </main>
+</body>
+</html>

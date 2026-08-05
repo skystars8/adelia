@@ -1,0 +1,37 @@
+<form class="post-form" action="/post" method="post" enctype="multipart/form-data" data-post-form>
+  <input type="hidden" name="board" value="{{ board.slug }}">
+  {% if thread_id %}<input type="hidden" name="thread" value="{{ thread_id }}">{% endif %}
+  <label class="hp-field" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+  <table>
+    <tbody>
+      <tr>
+        <th><label for="post-name">Name</label></th>
+        <td><input id="post-name" name="name" type="text" maxlength="165" size="25" autocomplete="off" data-remember="name" aria-describedby="secure-trip-help"> <span id="secure-trip-help" class="unimportant">Secure identity: Name##unique-private-secret (12+ characters; secret is not stored).</span></td>
+      </tr>
+      <tr>
+        <th><label for="post-subject">Subject</label></th>
+        <td>
+          <input id="post-subject" name="subject" type="text" maxlength="100" size="25" autocomplete="off">
+          <button type="submit">{% if thread_id %}New Reply{% else %}New Thread{% endif %}</button>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="post-body">Comment</label></th>
+        <td><textarea id="post-body" name="body" rows="5" cols="38" maxlength="20000"></textarea></td>
+      </tr>
+      <tr>
+        <th><label for="post-file">File</label></th>
+        <td><input id="post-file" name="file" type="file" accept="image/jpeg,image/png,image/gif,image/webp"></td>
+      </tr>
+      {% if posting_password_required %}
+      <tr>
+        <th><label for="post-board-password">Board password</label></th>
+        <td>
+          <input id="post-board-password" name="board_password" type="password" maxlength="128" size="18" autocomplete="off" required>
+          <span class="unimportant">(Required for posting on this board.)</span>
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</form>

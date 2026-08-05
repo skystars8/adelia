@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - News</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content mod-content-narrow">
+    <header class="mod-page-header"><h1>News</h1></header>
+    <section class="mod-panel">
+      <h2>New Post</h2>
+      <form class="mod-form" action="/mod/news" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Name <input value="{{ username }}" disabled></label>
+        <label>Subject <input name="subject" maxlength="150" required></label>
+        <label>Body <textarea name="body" rows="7" maxlength="10000" required></textarea></label>
+        <button type="submit">Post news entry</button>
+      </form>
+    </section>
+    <section class="mod-panel">
+      <h2>Published News</h2>
+      {% for entry in news %}
+      <article class="mod-news-entry">
+        <h3>{{ entry.subject }} <small class="unimportant">- by {{ entry.author_name }} at {{ entry.created_at }}</small></h3>
+        <div>{{ entry.body_html|safe }}</div>
+      </article>
+      {% else %}<p class="unimportant">No news entries.</p>{% endfor %}
+    </section>
+  </main>
+</body>
+</html>

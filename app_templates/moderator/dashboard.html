@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Moderator Dashboard</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content mod-content-narrow">
+    <header class="mod-page-header">
+      <h1>Moderator Dashboard</h1>
+      <p>Choose an administration area below.</p>
+    </header>
+
+    <div class="mod-dashboard-grid">
+      <fieldset class="mod-fieldset">
+        <legend>Boards</legend>
+        <ul class="mod-link-list">
+        {% for board in boards %}
+          <li><a href="/mod/boards/{{ board.slug }}">/{{ board.slug }}/</a> - {{ board.title }} <a class="unimportant" href="/{{ board.slug }}/" target="_blank" rel="noopener">[public]</a></li>
+        {% endfor %}
+          <li class="mod-list-separator"><a href="/mod/boards"><strong>Manage boards{% if role == "admin" %} and create a board{% endif %}</strong></a></li>
+        </ul>
+      </fieldset>
+
+      <fieldset class="mod-fieldset">
+        <legend>Administration</legend>
+        <ul class="mod-link-list">
+          <li><a href="/mod/reports">Report queue ({{ report_count }})</a></li>
+          <li><a href="/mod/pending">Pending approval ({{ pending_count }})</a></li>
+          <li><a href="/mod/threads">Recent posts</a></li>
+          <li>{{ post_count }} posts in {{ thread_count }} threads</li>
+        </ul>
+      </fieldset>
+
+      <fieldset class="mod-fieldset">
+        <legend>Messages</legend>
+        <ul class="mod-link-list">
+          <li><a href="/mod/news">News</a></li>
+        </ul>
+      </fieldset>
+
+      <fieldset class="mod-fieldset">
+        <legend>User account</legend>
+        <ul class="mod-link-list">
+          <li>Signed in as <strong>{{ username }}</strong> ({{ role }})</li>
+        </ul>
+      </fieldset>
+    </div>
+  </main>
+</body>
+</html>

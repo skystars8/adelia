@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>/{{ board.slug }}/ - Archive</title>
+</head>
+<body class="adelia active-page">
+  {% include "_boardlist.html" %}
+  {% include "_board_banner.html" %}
+  <header>
+    <h1>/{{ board.slug }}/ - Archive</h1>
+    <div class="subtitle">Archived threads remain readable but cannot receive replies.</div>
+  </header>
+  <main class="archive-page ban">
+    <h2>Archived Threads</h2>
+    {% if threads %}
+    <table class="archive-table">
+      <thead><tr><th>No.</th><th>Subject</th><th>Excerpt</th><th>Created</th></tr></thead>
+      <tbody>
+      {% for thread in threads %}
+        <tr>
+          <td><a href="{{ thread.url }}">{{ thread.id }}</a></td>
+          <td><a href="{{ thread.url }}">{{ thread.subject }}</a></td>
+          <td>{{ thread.excerpt }}</td>
+          <td>{{ thread.created_at }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="centered unimportant">No archived threads.</p>
+    {% endif %}
+  </main>
+  {% include "_boardlist.html" %}
+  <footer><p class="unimportant centered">Adelia - Rust/PostgreSQL created by ChatGPT.</p></footer>
+</body>
+</html>

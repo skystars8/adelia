@@ -1,0 +1,43 @@
+{% from "_macros.html" import render_post, action_fields %}
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <meta name="description" content="{{ op.subject }}">
+  <title>/{{ board.slug }}/ - {% if op.subject %}{{ op.subject }}{% else %}Thread {{ op.id }}{% endif %}</title>
+</head>
+<body class="thread-page adelia active-thread">
+  {% include "_boardlist.html" %}
+  {% include "_board_banner.html" %}
+  <header>
+    <h1>/{{ board.slug }}/ - {{ board.title }}</h1>
+    <div class="subtitle">{{ board.subtitle }}</div>
+  </header>
+  <div class="banner">Posting mode: Reply <a href="{{ board.url }}">[Return]</a> <a href="#bottom">[Go to bottom]</a></div>
+  {% if not read_only %}
+    {% if require_approval %}<div class="banner moderation-notice">New replies appear after moderator approval.</div>{% endif %}
+    {% if posting_password_required %}<div class="banner board-password-notice">Posting is limited to members with this board's shared password.</div>{% endif %}
+    {% set thread_id = op.id %}
+    {% include "_post_form.html" %}
+  {% else %}
+    <div class="locked-notice">Posting is disabled because this thread is locked, archived, or its board is locked.</div>
+  {% endif %}
+  <hr>
+  <form class="post-controls" action="/actions" method="post">
+    <input type="hidden" name="board" value="{{ board.slug }}">
+    <div class="thread">
+      {{ render_post(op, board.url ~ "res/" ~ op.id ~ ".html", true) }}
+      {% for reply in replies %}{{ render_post(reply, board.url ~ "res/" ~ op.id ~ ".html", false) }}{% endfor %}
+      <br class="clear">
+    </div>
+    <div class="thread-interactions">
+      [<a href="{{ board.url }}">Return</a>] [<a href="#top">Go to top</a>] [<a href="{{ board.catalog_url }}">Catalog</a>]
+      <a class="quick-reply-link" href="#post-body">[Post a Reply]</a>
+    </div>
+    {{ action_fields(board) }}
+  </form>
+  <a id="bottom"></a>
+  {% include "_boardlist.html" %}
+  <footer><p class="unimportant centered">{{ reply_count }} replies in this thread.<br>Adelia - Rust/PostgreSQL created by ChatGPT.</p></footer>
+</body>
+</html>

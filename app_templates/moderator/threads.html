@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Recent Posts</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content">
+    <header class="mod-page-header">
+      <h1>Recent Posts</h1>
+      <p>View <a href="/mod/threads?limit=25">25</a> | <a href="/mod/threads?limit=50">50</a> | <a href="/mod/threads?limit=100">100</a> most recent posts. Showing {{ limit }}.</p>
+    </header>
+    {% if posts %}
+    <div class="mod-post-list">
+    {% for post in posts %}
+      <article class="mod-post-card">
+        <div class="mod-post-heading">
+          <strong>{% if post.is_thread %}Thread{% else %}Reply{% endif %} <a href="/{{ post.board_slug }}/res/{{ post.root_thread_id }}.html#{{ post.id }}" target="_blank" rel="noopener">/{{ post.board_slug }}/ No.{{ post.id }}</a></strong>
+          <span>{{ post.created_at }}</span>
+        </div>
+        <p class="intro">
+          {% if post.subject %}<span class="subject">{{ post.subject }}</span>{% endif %}
+          <span class="name">{{ post.name }}</span>{% if post.tripcode %}<span class="tripcode" title="Secure tripcode">!!{{ post.tripcode }}</span>{% endif %}
+          {% if post.file_original_name %}<span class="unimportant">[image: {{ post.file_original_name }}]</span>{% endif %}
+          {% if post.sticky %}<strong>[sticky]</strong>{% endif %}
+          {% if post.locked %}<strong>[locked]</strong>{% endif %}
+          {% if post.archived %}<strong>[archived]</strong>{% endif %}
+        </p>
+        <div class="mod-post-body">{% if post.body %}{{ post.body }}{% else %}<em>No comment.</em>{% endif %}</div>
+        <div class="action-cell mod-post-actions">
+          <a class="button-link" href="/{{ post.board_slug }}/res/{{ post.root_thread_id }}.html#{{ post.id }}" target="_blank" rel="noopener">View</a>
+          <a class="button-link" href="/mod/posts/{{ post.id }}/edit">Edit</a>
+          {% if post.is_thread %}
+          <form action="/mod/threads/{{ post.id }}/toggle-sticky" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">{% if post.sticky %}Unsticky{% else %}Sticky{% endif %}</button></form>
+          <form action="/mod/threads/{{ post.id }}/toggle-lock" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">{% if post.locked %}Unlock{% else %}Lock{% endif %}</button></form>
+          {% endif %}
+          <form action="/mod/posts/{{ post.id }}/delete" method="post" data-confirm="{% if post.is_thread %}Delete this entire thread and all replies?{% else %}Delete this reply?{% endif %} This cannot be undone.">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="return_to" value="threads">
+            <button class="danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+    </div>
+    {% else %}<p class="centered unimportant">(There are no active posts.)</p>{% endif %}
+  </main>
+</body>
+</html>

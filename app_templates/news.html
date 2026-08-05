@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <meta name="description" content="{{ site.subtitle }}">
+  <title>{{ site.title }} - News</title>
+</head>
+<body class="adelia active-page">
+  {% include "_boardlist.html" %}
+  <header>
+    <h1>{{ site.title }}</h1>
+    <div class="subtitle">{{ site.subtitle }}</div>
+  </header>
+  <main class="news-page">
+    <section class="ban welcome-panel">
+      <h2>Boards</h2>
+      <div class="board-directory">
+      {% for board in boards %}
+        <a class="board-card" href="{{ board.url }}">
+          <strong>/{{ board.slug }}/ - {{ board.title }}</strong>
+          <span>{{ board.description }}</span>
+        </a>
+      {% endfor %}
+      </div>
+    </section>
+    <section class="ban news-list">
+      <h2>News</h2>
+      {% if news %}
+        {% for entry in news %}
+        <article id="news-{{ entry.id }}">
+          <h3>{{ entry.subject }} <span class="unimportant">— by {{ entry.author_name }} at {{ entry.created_at }}</span></h3>
+          <p>{{ entry.body_html|safe }}</p>
+        </article>
+        {% endfor %}
+      {% else %}
+        <p class="unimportant centered">No news to show.</p>
+      {% endif %}
+    </section>
+  </main>
+  <footer><p class="unimportant centered">Adelia - Rust/PostgreSQL created by ChatGPT.</p></footer>
+</body>
+</html>

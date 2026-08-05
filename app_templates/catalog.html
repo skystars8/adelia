@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>/{{ board.slug }}/ - Catalog</title>
+</head>
+<body class="catalog-page adelia theme-catalog active-catalog">
+  {% include "_boardlist.html" %}
+  {% include "_board_banner.html" %}
+  <header>
+    <h1>{{ board.title }} (<a href="{{ board.url }}">/{{ board.slug }}/</a>)</h1>
+    <div class="subtitle">{{ board.subtitle }}</div>
+  </header>
+  <div class="catalog-controls">
+    <label>Sort by
+      <select data-catalog-sort>
+        <option value="bump" selected>Bump order</option>
+        <option value="time">Creation date</option>
+        <option value="replies">Reply count</option>
+      </select>
+    </label>
+    <label>Card size
+      <select data-catalog-size>
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </label>
+    [<a href="{{ board.archive_url }}">Archive</a>]
+  </div>
+  <main class="catalog-grid size-medium" data-catalog-grid>
+  {% for thread in threads %}
+    <article class="catalog-thread" data-bump="{{ thread.bumped_at_unix }}" data-time="{{ thread.created_at_unix }}" data-replies="{{ thread.reply_count }}">
+      <a class="catalog-image" href="{{ thread.url }}">
+      {% if thread.op.image %}
+        <img src="{{ thread.op.image.thumb_url }}" alt="" loading="lazy">
+      {% else %}
+        <span class="no-image">No image</span>
+      {% endif %}
+      </a>
+      <div class="catalog-summary">
+        <strong>R: {{ thread.reply_count }} / I: {{ thread.image_count }}{% if thread.op.sticky %} (sticky){% endif %}</strong>
+        {% if thread.op.subject %}<p class="subject">{{ thread.op.subject }}</p>{% endif %}
+        <p>{{ thread.op.body_html|safe }}</p>
+      </div>
+    </article>
+  {% else %}
+    <p class="unimportant centered">No active threads.</p>
+  {% endfor %}
+  </main>
+  <hr>
+  {% include "_boardlist.html" %}
+  <footer><p class="unimportant centered">Adelia - Rust/PostgreSQL created by ChatGPT.</p></footer>
+</body>
+</html>

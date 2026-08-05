@@ -1,0 +1,16 @@
+<nav class="mod-nav" aria-label="Moderator navigation">
+  <strong><a class="mod-brand" href="/mod">{{ site_title }} Moderator</a></strong>
+  <a href="/mod"{% if active == "dashboard" %} class="active" aria-current="page"{% endif %}>Dashboard</a>
+  <a href="/" target="_blank" rel="noopener">View site</a>
+  <a href="/mod/reports"{% if active == "reports" %} class="active" aria-current="page"{% endif %}>Reports</a>
+  <a href="/mod/pending"{% if active == "pending" %} class="active" aria-current="page"{% endif %}>Pending</a>
+  <a href="/mod/threads"{% if active == "threads" %} class="active" aria-current="page"{% endif %}>Recent Posts</a>
+  <a href="/mod/boards"{% if active == "boards" %} class="active" aria-current="page"{% endif %}>Boards</a>
+  <a href="/mod/news"{% if active == "news" %} class="active" aria-current="page"{% endif %}>News</a>
+  <span class="nav-spacer"></span>
+  <span>{{ username }} ({{ role }})</span>
+  <form action="/mod/logout" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Sign out</button>
+  </form>
+</nav>

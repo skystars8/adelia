@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Reports</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content">
+    <header class="mod-page-header">
+      <h1>Report Queue</h1>
+      <p>Review reported posts. Editing opens the standard post editor.</p>
+    </header>
+    <section class="mod-panel">
+      <h2>Open Reports</h2>
+      {% if reports %}
+      <div class="table-scroll"><table class="mod-table">
+        <thead><tr><th>Post</th><th>Reason</th><th>Comment</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for report in reports %}
+          <tr>
+            <td><a href="/{{ report.board_slug }}/res/{{ report.thread_id }}.html#{{ report.post_id }}" target="_blank" rel="noopener">/{{ report.board_slug }}/ No.{{ report.post_id }}</a></td>
+            <td>{{ report.reason }}</td>
+            <td class="mod-comment-cell">{{ report.post_body }}</td>
+            <td>{{ report.created_at }}</td>
+            <td class="action-cell">
+              <a class="button-link" href="/mod/posts/{{ report.post_id }}/edit">Edit</a>
+              <form action="/mod/reports/{{ report.id }}/dismiss" method="post">
+                <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Dismiss</button>
+              </form>
+              <form action="/mod/posts/{{ report.post_id }}/delete" method="post" data-confirm="Delete this post? If it starts a thread, all replies will also be deleted.">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="return_to" value="reports">
+                <button class="danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}<p class="centered unimportant">(There are no reports.)</p>{% endif %}
+    </section>
+  </main>
+</body>
+</html>

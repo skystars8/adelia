@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <meta name="description" content="{{ site.subtitle }}">
+  <title>{{ site.title }}</title>
+</head>
+<body class="frame-shell adelia active-page">
+  <button class="frame-toggle" type="button" aria-controls="frame-sidebar" aria-expanded="true" data-frame-toggle>Hide boards</button>
+  <aside class="frame-sidebar" id="frame-sidebar">
+    <fieldset>
+      <legend>{{ site.title }}</legend>
+      <ul>
+        <li><a class="system" href="/news.html" target="main">[News]</a></li>
+        <li><a class="system" href="/mod" target="_top">[Moderator]</a></li>
+      </ul>
+    </fieldset>
+    <fieldset>
+      <legend>Boards</legend>
+      <ul>
+      {% for board in boards %}
+        <li><a href="{{ board.url }}" target="main">/{{ board.slug }}/ - {{ board.title }}</a></li>
+      {% endfor %}
+      </ul>
+    </fieldset>
+    <p class="frame-help">The board frame can be hidden at any time. On a phone, it becomes a slide-out menu.</p>
+  </aside>
+  <main class="frame-main">
+    <iframe src="/news.html" id="main" name="main" title="{{ site.title }} content"></iframe>
+  </main>
+</body>
+</html>

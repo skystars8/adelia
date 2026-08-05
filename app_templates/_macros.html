@@ -1,0 +1,33 @@
+{% macro render_post(post, thread_url, is_op=false) %}
+<div class="post {% if is_op %}op{% else %}reply{% endif %}" id="{{ post.id }}">
+  <p class="intro">
+    <input class="delete" type="checkbox" name="post_id" value="{{ post.id }}" aria-label="Select post {{ post.id }}">
+    {% if post.subject %}<span class="subject">{{ post.subject }}</span>{% endif %}
+    <span class="name">{{ post.name }}</span>{% if post.tripcode %}<span class="tripcode" title="Secure tripcode">!!{{ post.tripcode }}</span>{% endif %}
+    <time datetime="{{ post.created_at_iso }}">{{ post.created_at }}</time>
+    <a class="post-no post_no" href="{{ thread_url }}#{{ post.id }}">No.</a><a class="post-no post_no quote-number" href="{{ thread_url }}#{{ post.id }}" data-quote-id="{{ post.id }}">{{ post.id }}</a>
+    {% if post.sticky %}<span class="post-flag" title="Sticky thread">&#128204;</span>{% endif %}
+    {% if post.locked %}<span class="post-flag" title="Locked thread">&#128274;</span>{% endif %}
+    {% if is_op %}<a class="reply-link" href="{{ thread_url }}">[Reply]</a>{% endif %}
+  </p>
+  {% if post.image %}
+  <div class="file">
+    <p class="fileinfo">File: <a href="{{ post.image.file_url }}" target="_blank" rel="noopener">{{ post.image.original_name }}</a> ({{ post.image.file_size }}, {{ post.image.width }}x{{ post.image.height }})</p>
+    <a href="{{ post.image.file_url }}" target="_blank" rel="noopener" data-expand-image data-full="{{ post.image.file_url }}" data-thumb="{{ post.image.thumb_url }}">
+      <img class="post-image" src="{{ post.image.thumb_url }}" alt="Attached image" loading="lazy" width="{{ post.image.width }}" height="{{ post.image.height }}">
+    </a>
+  </div>
+  {% endif %}
+  <div class="body">{{ post.body_html|safe }}</div>
+</div>
+{% endmacro %}
+
+{% macro action_fields(board) %}
+<div class="post-actions">
+  <fieldset>
+    <legend>Report Post</legend>
+    <label>Reason <input type="text" name="reason" maxlength="300" size="24"></label>
+    <button type="submit" name="action" value="report">Report</button>
+  </fieldset>
+</div>
+{% endmacro %}

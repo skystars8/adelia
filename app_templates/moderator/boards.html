@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Boards</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content">
+    <header class="mod-page-header"><h1>Boards</h1></header>
+    <section class="mod-panel">
+      <h2>Board Directory</h2>
+      <p class="unimportant">Locking blocks new threads and replies. Approval mode holds future submissions in the pending queue. A shared posting password keeps reading public while limiting new posts to members who know it.</p>
+      <ul class="board-admin-list">
+      {% for board in boards %}
+        <li>
+          <div class="board-admin-heading">
+            <span><a href="/mod/boards/{{ board.slug }}"><strong>/{{ board.slug }}/</strong> - {{ board.title }}</a> <a class="unimportant" href="/{{ board.slug }}/" target="_blank" rel="noopener">[public]</a></span>
+            <small>{{ board.threads_per_page }} threads/page &middot; {{ board.max_pages }} pages</small>
+          </div>
+          {% if board.description %}<p>{{ board.description }}</p>{% endif %}
+          <form class="board-settings-form" action="/mod/boards/{{ board.id }}/settings" method="post">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <label><input type="checkbox" name="read_only" value="true"{% if board.read_only %} checked{% endif %}> Lock all posting</label>
+            <label><input type="checkbox" name="require_approval" value="true"{% if board.require_approval %} checked{% endif %}> Require approval</label>
+            <label><input type="checkbox" name="posting_password_enabled" value="true"{% if board.posting_password_required %} checked{% endif %}> Require shared posting password</label>
+            <label class="board-password-setting">Shared password
+              <input type="password" name="posting_password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="{% if board.posting_password_required %}Leave blank to keep current{% else %}Required when enabling{% endif %}">
+              <span class="unimportant">{% if board.posting_password_required %}Active; enter a new value to replace it.{% else %}Use 12+ characters.{% endif %}</span>
+            </label>
+            <button type="submit">Save</button>
+          </form>
+        </li>
+      {% endfor %}
+      </ul>
+    </section>
+    {% if role == "admin" %}
+    <section class="mod-panel">
+      <h2>Create Board</h2>
+      <form class="mod-form" action="/mod/boards" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>URI <span>/<input name="slug" maxlength="32" required placeholder="projects">/</span></label>
+        <label>Title <input name="title" maxlength="100" required placeholder="Projects &amp; Showcase"></label>
+        <label>Subtitle <input name="subtitle" maxlength="200"></label>
+        <label>Description <textarea name="description" rows="4" maxlength="2000"></textarea></label>
+        <button type="submit">Create board</button>
+      </form>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

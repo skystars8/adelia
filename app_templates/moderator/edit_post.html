@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Edit Post No.{{ post.id }}</title>
+</head>
+<body class="moderator-page">
+  {% include "moderator/_nav.html" %}
+  <main class="mod-content mod-content-narrow">
+    <header class="mod-page-header">
+      <h1>Edit {% if post.is_thread %}Thread{% else %}Reply{% endif %} No.{{ post.id }}</h1>
+      <p>/{{ post.board_slug }}/ &middot; {% if post.approved %}<a href="/{{ post.board_slug }}/res/{{ post.root_thread_id }}.html#{{ post.id }}" target="_blank" rel="noopener">View original post</a> &middot; <a href="/mod/threads">Return to recent posts</a>{% else %}<strong>Awaiting approval</strong> &middot; <a href="/mod/pending">Return to pending posts</a>{% endif %}</p>
+    </header>
+    <section class="mod-panel mod-edit-panel">
+      <h2>Edit Post</h2>
+      <form class="mod-edit-post-form" action="/mod/posts/{{ post.id }}/edit" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <table>
+          <tr>
+            <th><label for="edit-name">Name</label></th>
+            <td><input id="edit-name" type="text" name="name" size="25" maxlength="35" autocomplete="off" value="{{ post.name }}">{% if post.tripcode %} <span class="tripcode" title="Secure tripcode">!!{{ post.tripcode }}</span> <span class="unimportant">(preserved)</span>{% endif %}</td>
+          </tr>
+          <tr>
+            <th><label for="edit-subject">Subject</label></th>
+            <td class="mod-subject-row"><input id="edit-subject" type="text" name="subject" size="25" maxlength="100" autocomplete="off" value="{{ post.subject }}"><button type="submit">Update</button></td>
+          </tr>
+          <tr>
+            <th><label for="edit-body">Comment</label></th>
+            <td><textarea id="edit-body" name="body" rows="10" cols="50" maxlength="{{ max_body_chars }}">{{ post.body }}</textarea></td>
+          </tr>
+          <tr>
+            <th>Image</th>
+            <td class="mod-edit-image">
+              {% if post.file_path %}
+              <a href="/media/{{ post.file_path }}" target="_blank" rel="noopener"><img src="/media/{{ post.thumb_path }}" alt="Current post image"></a>
+              <small>{{ post.file_original_name }}</small>
+              <label><input type="checkbox" name="remove_image" value="true"> Remove current image</label>
+              {% else %}
+              <small>This post currently has no image.</small>
+              {% endif %}
+              <label for="replacement-image">{% if post.file_path %}Replace image{% else %}Add image{% endif %}</label>
+              <input id="replacement-image" type="file" name="replacement_image" accept="image/jpeg,image/png,image/gif,image/webp">
+              <small>A selected file replaces the current image and creates a new thumbnail.</small>
+            </td>
+          </tr>
+        </table>
+        <p class="centered"><button type="submit">Update post</button></p>
+      </form>
+      <p class="centered unimportant">Comments are rebuilt using the board's safe quote and greentext markup. Raw HTML editing is intentionally disabled.</p>
+    </section>
+  </main>
+</body>
+</html>

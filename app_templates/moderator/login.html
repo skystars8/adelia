@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <title>{{ site_title }} - Moderator Login</title>
+</head>
+<body class="moderator-page">
+  <header><h1>{{ site_title }} Moderator</h1></header>
+  <main class="login-panel ban">
+    <h2>Sign in</h2>
+    {% if development_mode %}<p class="development-login"><strong>Local development:</strong> username <code>admin</code>, password <code>mod</code>.</p>{% endif %}
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <form action="/mod/login" method="post">
+      <p><label>Username<br><input name="username" type="text" maxlength="64" autocomplete="username" required autofocus></label></p>
+      <p><label>Password<br><input name="password" type="password" autocomplete="current-password" required></label></p>
+      <p><button type="submit">Sign in</button> <a href="/">Return home</a></p>
+    </form>
+  </main>
+</body>
+</html>

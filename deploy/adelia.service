@@ -1,0 +1,25 @@
+[Unit]
+Description=Adelia Rust/PostgreSQL discussion board engine
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adelia
+Group=adelia
+WorkingDirectory=/opt/adelia
+EnvironmentFile=/opt/adelia/.env
+ExecStart=/opt/adelia/adelia serve
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGTERM
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/adelia/generated /opt/adelia/data/uploads
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+<div class="boardlist" role="navigation" aria-label="Board navigation">
+  <a href="/" target="_top">Home</a>
+  {% for item in boards %}
+    <span class="board-link">[<a href="{{ item.url }}">/{{ item.slug }}/</a>]</span>
+  {% endfor %}
+  <span class="board-actions"><span class="options-action">[<a href="#options" data-options-open aria-haspopup="dialog" aria-controls="options-handler">Options</a>]</span> [<a href="/mod" target="_top">Mod</a>]</span>
+</div>

@@ -1,0 +1,55 @@
+{% from "_macros.html" import render_post, action_fields %}
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <meta name="description" content="{{ board.description }}">
+  <title>/{{ board.slug }}/ - {{ board.title }}</title>
+</head>
+<body class="board-page adelia active-index">
+  {% include "_boardlist.html" %}
+  {% include "_board_banner.html" %}
+  <header>
+    <h1>/{{ board.slug }}/ - {{ board.title }}</h1>
+    <div class="subtitle">{{ board.subtitle }}</div>
+  </header>
+  <nav class="board-tools" aria-label="Board tools">
+    [<a href="{{ board.catalog_url }}">Catalog</a>]
+    [<a href="{{ board.archive_url }}">Archive</a>]
+  </nav>
+  {% if not read_only %}
+    {% if require_approval %}<div class="banner moderation-notice">New posts on this board appear after moderator approval.</div>{% endif %}
+    {% if posting_password_required %}<div class="banner board-password-notice">Posting is limited to members with this board's shared password.</div>{% endif %}
+    {% include "_post_form.html" %}
+  {% else %}
+    <div class="banner">This board is locked. New threads and replies are disabled.</div>
+  {% endif %}
+  <div class="pages top" role="navigation" aria-label="Board pages">
+    {% for page in pages %}[{% if page.selected %}<strong>{{ page.number }}</strong>{% else %}<a href="{{ page.url }}">{{ page.number }}</a>{% endif %}] {% endfor %}
+  </div>
+  <hr>
+  <form class="post-controls" action="/actions" method="post">
+    <input type="hidden" name="board" value="{{ board.slug }}">
+    {% if threads %}
+      {% for thread in threads %}
+      <div class="thread" id="thread-{{ thread.op.id }}">
+        {{ render_post(thread.op, thread.url, true) }}
+        {% if thread.omitted_count > 0 %}<p class="omitted">{{ thread.omitted_count }} posts omitted. Click Reply to view.</p>{% endif %}
+        {% for reply in thread.replies %}{{ render_post(reply, thread.url, false) }}{% endfor %}
+        <br class="clear">
+        <hr>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="centered unimportant empty-board">No threads yet. You can start the first one.</p>
+    {% endif %}
+    {{ action_fields(board) }}
+  </form>
+  <div class="pages" role="navigation" aria-label="Board pages">
+    {% for page in pages %}[{% if page.selected %}<strong>{{ page.number }}</strong>{% else %}<a href="{{ page.url }}">{{ page.number }}</a>{% endif %}] {% endfor %}
+    | <a href="{{ board.catalog_url }}">Catalog</a>
+  </div>
+  {% include "_boardlist.html" %}
+  <footer><p class="unimportant centered">Adelia - Rust/PostgreSQL created by ChatGPT.</p></footer>
+</body>
+</html>
