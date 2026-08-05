@@ -1,0 +1,50 @@
+[package]
+name = "adelia"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "A fast static-read Rust/PostgreSQL discussion-board engine for hobby and educational communities"
+exclude = [
+    ".env",
+    "data/uploads/**",
+    "generated/**",
+    "target/**",
+]
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.5"
+axum = { version = "0.8", features = ["macros", "multipart"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+dashmap = "6"
+dotenvy = "0.15"
+hmac = "0.12"
+html-escape = "0.2"
+image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
+minijinja = { version = "2", features = ["loader"] }
+rand = "0.8"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlx = { version = "0.8", features = ["chrono", "migrate", "postgres", "runtime-tokio-rustls"] }
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tower = { version = "0.5", features = ["timeout"] }
+tower-http = { version = "0.6", features = ["catch-panic", "compression-full", "fs", "request-id", "sensitive-headers", "timeout", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
