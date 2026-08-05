@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
 use adelia::{
-    AppState, config::Config, rate_limit::RateLimiter, render::Templates, routes,
+    AppState, config::Config, publisher, rate_limit::RateLimiter, render::Templates, routes,
     security::password_hash, static_builder::StaticBuilder,
 };
 use anyhow::{Context, Result, bail};
@@ -86,10 +86,12 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Command::Serve => {
-            builder
-                .rebuild_all()
-                .await
-                .context("initial static build failed")?;
+            if !config.generated_dir.join("index.html").is_file() {
+                builder
+                    .rebuild_all()
+                    .await
+                    .context("initial static build failed")?;
+            }
             serve(pool, config, templates, builder).await
         }
     }
@@ -140,14 +142,16 @@ async fn serve(
     builder: Arc<StaticBuilder>,
 ) -> Result<()> {
     let banner_files = Arc::new(load_banner_files(&config.asset_dir).await?);
-    let state = AppState {
-        pool,
-        config: config.clone(),
+    let publisher_notify = Arc::new(tokio::sync::Notify::new());
+    let state = AppState::new(
+        pool.clone(),
+        config.clone(),
         templates,
-        builder,
-        rate_limiter: Arc::new(RateLimiter::default()),
+        builder.clone(),
+        Arc::new(RateLimiter::default()),
         banner_files,
-    };
+        publisher_notify.clone(),
+    );
     let sensitive = [header::AUTHORIZATION, header::COOKIE];
     let app = Router::new()
         .merge(routes::router())
@@ -171,10 +175,32 @@ async fn serve(
     let listener = tokio::net::TcpListener::bind(config.bind_addr)
         .await
         .with_context(|| format!("could not listen on {}", config.bind_addr))?;
+    let released_claims = publisher::release_claims(&pool).await?;
+    if released_claims > 0 {
+        tracing::warn!(
+            released_claims,
+            "released publication jobs left claimed by an earlier process"
+        );
+    }
+    let publisher_workers = publisher::spawn_workers(
+        config.publisher_workers,
+        pool,
+        builder,
+        publisher_notify.clone(),
+    );
+    publisher_notify.notify_waiters();
+    tracing::info!(
+        workers = config.publisher_workers,
+        "static publishers started"
+    );
     tracing::info!(address = %config.bind_addr, "Adelia is ready");
-    axum::serve(listener, app.into_make_service())
+    let server_result = axum::serve(listener, app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
-        .await?;
+        .await;
+    for worker in publisher_workers {
+        worker.abort();
+    }
+    server_result?;
     Ok(())
 }
 

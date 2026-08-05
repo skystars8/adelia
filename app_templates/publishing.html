@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include "_head.html" %}
+  <meta http-equiv="refresh" content="1; url={{ retry_url }}">
+  <title>Publishing - {{ site_title }}</title>
+</head>
+<body class="adelia publishing-page">
+  <header>
+    <h1>{{ site_title }}</h1>
+    <div class="subtitle">Publishing your post</div>
+  </header>
+  <main class="ban">
+    <h2>Your post was saved.</h2>
+    <p>Adelia is preparing its fast static page. This usually takes only a moment.</p>
+    <p>This page will continue automatically, or you can <a href="{{ destination }}">open the thread</a>.</p>
+  </main>
+</body>
+</html>

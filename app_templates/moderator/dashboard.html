@@ -30,6 +30,7 @@
           <li><a href="/mod/pending">Pending approval ({{ pending_count }})</a></li>
           <li><a href="/mod/threads">Recent posts</a></li>
           <li>{{ post_count }} posts in {{ thread_count }} threads</li>
+          <li>Static pages: {% if publication_count == 0 %}up to date{% else %}{{ publication_count }} queued or publishing{% endif %}</li>
         </ul>
       </fieldset>
 

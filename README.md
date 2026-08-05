@@ -8,7 +8,7 @@ Adelia is a preview release. It is suitable for local development, experimentati
 
 ## Why Adelia
 
-Most public reads never touch Rust or PostgreSQL. When a post or moderation action changes a board, Adelia regenerates the affected static HTML. A reverse proxy can then serve board indexes, threads, catalogs, archives, news, stylesheets, JavaScript, and uploaded media directly.
+Most public reads never touch Rust or PostgreSQL. When a post or moderation action changes a board, Adelia commits coalesced publication jobs in the same PostgreSQL transaction and regenerates the affected static HTML in retrying background workers. A reverse proxy can then serve board indexes, threads, catalogs, archives, news, stylesheets, JavaScript, and uploaded media directly.
 
 That design keeps ordinary reads inexpensive and leaves the bounded Rust/PostgreSQL path available for writes and moderation during traffic spikes.
 
@@ -48,9 +48,10 @@ That design keeps ordinary reads inexpensive and leaves the bounded Rust/Postgre
 
 ### Reliability and privacy
 
-- PostgreSQL transactions around posting and moderation changes.
-- Bounded connection pool with acquisition timeouts.
-- Serialized per-board static regeneration and temporary-file replacement.
+- PostgreSQL transactions commit posts, moderation changes, and their durable publication jobs atomically.
+- Coalescing static-publication queue with automatic retries and a visible moderator-dashboard queue count.
+- Bounded connection pool, multipart/image posting work, and Argon2 password work.
+- Retrying background publishers, cross-process publication locks, serialized per-board builds, and temporary-file replacement.
 - Request timeouts, panic containment, compression, graceful shutdown, and health/readiness endpoints.
 - Content Security Policy and other defensive HTTP headers.
 - No IP addresses or IP-derived hashes stored in PostgreSQL.
@@ -153,6 +154,9 @@ Copy `.env.example` to `.env` for a manual setup. Never commit `.env`.
 | `SECURE_COOKIES` | Must be `true` behind production HTTPS. |
 | `DB_MIN_CONNECTIONS` | Minimum PostgreSQL pool size. |
 | `DB_MAX_CONNECTIONS` | Maximum PostgreSQL pool size; default 20. |
+| `PUBLISHER_WORKERS` | Background static-page publishers; default 2. `DB_MAX_CONNECTIONS` must be at least twice this value plus 4. |
+| `POST_CONCURRENCY` | Maximum simultaneous multipart/image post operations; default 32. |
+| `PASSWORD_CONCURRENCY` | Maximum simultaneous Argon2 verification and hashing operations; default 4. |
 | `MAX_UPLOAD_BYTES` | Maximum uploaded-image size; default 8 MiB. |
 | `MAX_BODY_CHARS` | Maximum post body length; default 20,000 characters. |
 | `SESSION_HOURS` | Moderator session lifetime. |
@@ -197,6 +201,7 @@ Do not expose `cargo run` or the development login directly to the internet. A p
 - systemd or another supervisor;
 - Nginx serving static pages/media and proxying only dynamic routes;
 - PostgreSQL and upload/database backups tested by restoring them;
+- monitoring of health, readiness, and the publication count shown on the moderator dashboard;
 - dependency updates, monitoring, and a rollback plan.
 
 See [Ubuntu VPS deployment](docs/VPS_DEPLOYMENT.md).

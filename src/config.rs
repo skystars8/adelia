@@ -18,6 +18,9 @@ pub struct Config {
     pub max_body_chars: usize,
     pub db_min_connections: u32,
     pub db_max_connections: u32,
+    pub publisher_workers: usize,
+    pub post_concurrency: usize,
+    pub password_concurrency: usize,
     pub development_mode: bool,
     pub secure_cookies: bool,
     pub session_lifetime: Duration,
@@ -56,6 +59,26 @@ impl Config {
         if db_min_connections > db_max_connections || db_max_connections == 0 {
             bail!("DB connection limits are invalid");
         }
+        let publisher_workers = parsed("PUBLISHER_WORKERS", 2usize)?;
+        if !(1..=16).contains(&publisher_workers) {
+            bail!("PUBLISHER_WORKERS must be between 1 and 16");
+        }
+        let post_concurrency = parsed("POST_CONCURRENCY", 32usize)?;
+        if !(1..=1024).contains(&post_concurrency) {
+            bail!("POST_CONCURRENCY must be between 1 and 1024");
+        }
+        let password_concurrency = parsed("PASSWORD_CONCURRENCY", 4usize)?;
+        if !(1..=64).contains(&password_concurrency) {
+            bail!("PASSWORD_CONCURRENCY must be between 1 and 64");
+        }
+        let required_connections = u32::try_from(publisher_workers)?
+            .saturating_mul(2)
+            .saturating_add(4);
+        if db_max_connections < required_connections {
+            bail!(
+                "DB_MAX_CONNECTIONS must be at least (PUBLISHER_WORKERS * 2) + 4 ({required_connections})"
+            );
+        }
 
         Ok(Self {
             database_url,
@@ -75,6 +98,9 @@ impl Config {
             max_body_chars: parsed("MAX_BODY_CHARS", 20_000)?,
             db_min_connections,
             db_max_connections,
+            publisher_workers,
+            post_concurrency,
+            password_concurrency,
             development_mode,
             secure_cookies: boolean("SECURE_COOKIES", false)?,
             session_lifetime: Duration::from_secs(parsed("SESSION_HOURS", 12u64)? * 3600),

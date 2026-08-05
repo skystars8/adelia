@@ -1,20 +1,20 @@
 use std::time::Duration;
 
-use anyhow::Context;
 use axum::{
     body::Bytes,
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
-    response::{IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use rand::seq::SliceRandom;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     AppState,
     error::{AppError, AppResult},
     media::{SavedUpload, remove_upload, save_image},
     models::Board,
+    publisher,
     security::{
         clean_text, enforce_same_origin, format_post_body, password_matches, secure_trip_identity,
     },
@@ -38,6 +38,13 @@ struct Health<'a> {
     version: &'a str,
 }
 
+#[derive(Deserialize)]
+pub struct PublishingQuery {
+    board: String,
+    thread: i64,
+    post: i64,
+}
+
 pub async fn health() -> impl IntoResponse {
     axum::Json(Health {
         status: "ok",
@@ -53,6 +60,53 @@ pub async fn ready(State(state): State<AppState>) -> Response {
         Ok(1) => (StatusCode::OK, "ready").into_response(),
         _ => (StatusCode::SERVICE_UNAVAILABLE, "not ready").into_response(),
     }
+}
+
+pub async fn publishing(
+    State(state): State<AppState>,
+    Query(query): Query<PublishingQuery>,
+) -> AppResult<Response> {
+    let board_id = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT boards.id
+        FROM boards
+        JOIN posts ON posts.board_id = boards.id
+        WHERE boards.slug = $1
+          AND posts.id = $2
+          AND COALESCE(posts.thread_id, posts.id) = $3
+          AND posts.approved_at IS NOT NULL
+        "#,
+    )
+    .bind(&query.board)
+    .bind(query.post)
+    .bind(query.thread)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| AppError::not_found("That published post does not exist."))?;
+
+    let destination = format!("/{}/res/{}.html#{}", query.board, query.thread, query.post);
+    if !publisher::is_pending(
+        &state.pool,
+        &publisher::thread_target(board_id, query.thread),
+    )
+    .await?
+    {
+        return Ok(Redirect::to(&destination).into_response());
+    }
+
+    let retry_url = format!(
+        "/published?board={}&thread={}&post={}",
+        query.board, query.thread, query.post
+    );
+    let body = state.templates.render(
+        "publishing.html",
+        minijinja::context! {
+            site_title => &state.config.site_title,
+            destination,
+            retry_url,
+        },
+    )?;
+    Ok(Html(body).into_response())
 }
 
 pub async fn random_banner(
@@ -103,6 +157,7 @@ async fn enforce_board_posting_password(
 
     let submitted = submitted.to_owned();
     let hash = hash.clone();
+    let _password_permit = state.password_permit()?;
     let valid = tokio::task::spawn_blocking(move || password_matches(&submitted, &hash))
         .await
         .unwrap_or(false);
@@ -126,6 +181,7 @@ pub async fn create_post(
             "The site is receiving too many posts. Wait a moment and try again.",
         ));
     }
+    let _post_permit = state.post_permit()?;
     let incoming = parse_post(multipart, state.config.max_upload_bytes).await?;
     if !incoming.website.is_empty() {
         return Err(AppError::bad_request("The post could not be accepted."));
@@ -226,6 +282,7 @@ async fn create_validated_post(
         return Err(AppError::bad_request("Write a comment or attach an image."));
     }
     let body_html = format_post_body(&body);
+
     let saved_upload = match incoming.upload {
         Some((filename, bytes)) => Some(
             save_image(&state.config, &board.slug, &filename, bytes)
@@ -320,12 +377,19 @@ async fn create_validated_post(
         } else {
             Vec::new()
         };
+        if !require_approval {
+            publisher::enqueue_thread(&mut transaction, board.id, root_thread_id).await?;
+            for archived_id in &archived_ids {
+                publisher::enqueue_thread(&mut transaction, board.id, *archived_id).await?;
+            }
+            publisher::enqueue_board(&mut transaction, board.id).await?;
+        }
         transaction.commit().await?;
-        Ok::<_, AppError>((post_id, root_thread_id, archived_ids, require_approval))
+        Ok::<_, AppError>((post_id, root_thread_id, require_approval))
     }
     .await;
 
-    let (post_id, thread_id, archived_ids, require_approval) = match transaction_result {
+    let (post_id, thread_id, require_approval) = match transaction_result {
         Ok(result) => result,
         Err(error) => {
             cleanup_saved(&state, saved_upload.as_ref()).await;
@@ -337,27 +401,9 @@ async fn create_validated_post(
         return Ok(Redirect::to(&format!("/{}/?submitted=pending", board.slug)));
     }
 
-    state
-        .builder
-        .rebuild_thread(&board.slug, thread_id)
-        .await
-        .context("could not rebuild thread")?;
-    for archived_id in archived_ids {
-        if archived_id != thread_id {
-            state
-                .builder
-                .rebuild_thread(&board.slug, archived_id)
-                .await
-                .context("could not refresh archived thread")?;
-        }
-    }
-    state
-        .builder
-        .rebuild_board(&board.slug)
-        .await
-        .context("could not rebuild board")?;
+    state.publisher_notify.notify_waiters();
     Ok(Redirect::to(&format!(
-        "/{}/res/{}.html#{}",
+        "/published?board={}&thread={}&post={}",
         board.slug, thread_id, post_id
     )))
 }

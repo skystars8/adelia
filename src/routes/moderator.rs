@@ -17,6 +17,7 @@ use crate::{
     error::{AppError, AppResult},
     media::{SavedUpload, remove_upload, save_image},
     models::{Board, Moderator, ModeratorSession, NewsEntry, ReportRow},
+    publisher,
     security::{
         clean_text, cookie_value, enforce_same_origin, format_post_body, keyed_hash, password_hash,
         password_matches, random_token,
@@ -117,6 +118,7 @@ pub struct RecentPostsQuery {
 struct ModerationTarget {
     id: i64,
     thread_id: Option<i64>,
+    board_id: i64,
     board_slug: String,
     file_path: Option<String>,
     thumb_path: Option<String>,
@@ -146,6 +148,7 @@ struct RecentPost {
 struct EditablePost {
     id: i64,
     root_thread_id: i64,
+    board_id: i64,
     board_slug: String,
     name: String,
     tripcode: Option<String>,
@@ -212,6 +215,11 @@ async fn login(
     .bind(&username)
     .fetch_optional(&state.pool)
     .await?;
+    let _password_permit = if moderator.is_some() {
+        Some(state.password_permit()?)
+    } else {
+        None
+    };
     let valid = if let Some(moderator) = moderator.as_ref() {
         let password = form.password.clone();
         let hash = moderator.password_hash.clone();
@@ -229,7 +237,7 @@ async fn login(
         )?;
         return Ok((axum::http::StatusCode::UNAUTHORIZED, Html(html)).into_response());
     }
-    let moderator = moderator.expect("validated moderator exists");
+    let moderator = moderator.context("validated moderator is missing")?;
     let token = random_token(32);
     let token_hash = keyed_hash(&state.config.app_secret, token.as_bytes());
     let csrf = random_token(24);
@@ -278,6 +286,7 @@ async fn dashboard(State(state): State<AppState>, headers: HeaderMap) -> AppResu
     )
     .fetch_one(&state.pool)
     .await?;
+    let publication_count = publisher::pending_count(&state.pool).await?;
     let html = state.templates.render(
         "moderator/dashboard.html",
         context! {
@@ -291,6 +300,7 @@ async fn dashboard(State(state): State<AppState>, headers: HeaderMap) -> AppResu
             thread_count => totals.1,
             report_count => totals.2,
             pending_count => totals.3,
+            publication_count => publication_count,
         },
     )?;
     Ok(Html(html).into_response())
@@ -526,7 +536,7 @@ async fn edit_post(
     let transaction_result = async {
         let mut transaction = state.pool.begin().await?;
         let target = sqlx::query_as::<_, EditablePost>(
-            "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
+            "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.id AS board_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
         )
         .bind(post_id)
         .fetch_optional(&mut *transaction)
@@ -583,6 +593,15 @@ async fn edit_post(
             .execute(&mut *transaction)
             .await?;
         }
+        if target.approved {
+            publisher::enqueue_thread(
+                &mut transaction,
+                target.board_id,
+                target.root_thread_id,
+            )
+            .await?;
+            publisher::enqueue_board(&mut transaction, target.board_id).await?;
+        }
         transaction.commit().await?;
         Ok::<_, AppError>(target)
     }
@@ -604,16 +623,7 @@ async fn edit_post(
         .await;
     }
     if target.approved {
-        state
-            .builder
-            .rebuild_thread(&target.board_slug, target.root_thread_id)
-            .await
-            .context("could not rebuild edited thread")?;
-        state
-            .builder
-            .rebuild_board(&target.board_slug)
-            .await
-            .context("could not rebuild edited board")?;
+        state.publisher_notify.notify_waiters();
     }
     log_action(
         &state,
@@ -636,7 +646,7 @@ async fn edit_post(
 
 async fn editable_post(state: &AppState, post_id: i64) -> AppResult<Option<EditablePost>> {
     sqlx::query_as::<_, EditablePost>(
-        "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1",
+        "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.id AS board_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1",
     )
     .bind(post_id)
     .fetch_optional(&state.pool)
@@ -759,7 +769,7 @@ async fn approve_post(
 
     let mut transaction = state.pool.begin().await?;
     let target = sqlx::query_as::<_, EditablePost>(
-        "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
+        "SELECT p.id, COALESCE(p.thread_id, p.id) AS root_thread_id, b.id AS board_id, b.slug AS board_slug, p.name, p.tripcode, p.subject, p.body, p.thread_id IS NULL AS is_thread, p.file_original_name, p.file_path, p.thumb_path, p.approved_at IS NOT NULL AS approved FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
     )
     .bind(post_id)
     .fetch_optional(&mut *transaction)
@@ -805,27 +815,13 @@ async fn approve_post(
     } else {
         Vec::new()
     };
-    transaction.commit().await?;
-
-    state
-        .builder
-        .rebuild_thread(&target.board_slug, target.root_thread_id)
-        .await
-        .context("could not publish approved post")?;
-    for archived_id in archived_ids {
-        if archived_id != target.root_thread_id {
-            state
-                .builder
-                .rebuild_thread(&target.board_slug, archived_id)
-                .await
-                .context("could not refresh archived thread")?;
-        }
+    publisher::enqueue_thread(&mut transaction, board.id, target.root_thread_id).await?;
+    for archived_id in &archived_ids {
+        publisher::enqueue_thread(&mut transaction, board.id, *archived_id).await?;
     }
-    state
-        .builder
-        .rebuild_board(&target.board_slug)
-        .await
-        .context("could not refresh board after approval")?;
+    publisher::enqueue_board(&mut transaction, board.id).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(
         &state,
         session.moderator_id,
@@ -848,7 +844,7 @@ async fn delete_post(
     verify_csrf(&session, &form.csrf)?;
     let mut transaction = state.pool.begin().await?;
     let target = sqlx::query_as::<_, ModerationTarget>(
-        "SELECT p.id, p.thread_id, b.slug AS board_slug, p.file_path, p.thumb_path FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
+        "SELECT p.id, p.thread_id, b.id AS board_id, b.slug AS board_slug, p.file_path, p.thumb_path FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 FOR UPDATE OF p",
     )
     .bind(post_id)
     .fetch_optional(&mut *transaction)
@@ -856,7 +852,7 @@ async fn delete_post(
     .ok_or_else(|| AppError::not_found("That post does not exist."))?;
     let files = if target.thread_id.is_none() {
         sqlx::query_as::<_, ModerationTarget>(
-            "SELECT p.id, p.thread_id, b.slug AS board_slug, p.file_path, p.thumb_path FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 OR p.thread_id = $1 ORDER BY p.id FOR UPDATE OF p",
+            "SELECT p.id, p.thread_id, b.id AS board_id, b.slug AS board_slug, p.file_path, p.thumb_path FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = $1 OR p.thread_id = $1 ORDER BY p.id FOR UPDATE OF p",
         )
         .bind(post_id)
         .fetch_all(&mut *transaction)
@@ -865,16 +861,22 @@ async fn delete_post(
         vec![ModerationTarget {
             id: target.id,
             thread_id: target.thread_id,
+            board_id: target.board_id,
             board_slug: target.board_slug.clone(),
             file_path: target.file_path.clone(),
             thumb_path: target.thumb_path.clone(),
         }]
     };
+    if let Some(thread_id) = target.thread_id {
+        publisher::enqueue_thread(&mut transaction, target.board_id, thread_id).await?;
+    }
+    publisher::enqueue_board(&mut transaction, target.board_id).await?;
     sqlx::query("DELETE FROM posts WHERE id = $1")
         .bind(post_id)
         .execute(&mut *transaction)
         .await?;
     transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     for file in &files {
         remove_upload(
             &state.config.upload_dir,
@@ -889,18 +891,7 @@ async fn delete_post(
             .builder
             .remove_thread_page(&target.board_slug, thread_id)
             .await;
-    } else {
-        state
-            .builder
-            .rebuild_thread(&target.board_slug, thread_id)
-            .await
-            .context("could not rebuild moderated thread")?;
     }
-    state
-        .builder
-        .rebuild_board(&target.board_slug)
-        .await
-        .context("could not rebuild moderated board")?;
     log_action(
         &state,
         session.moderator_id,
@@ -921,15 +912,18 @@ async fn toggle_lock(
     enforce_same_origin(&headers)?;
     let session = require_session(&state, &headers).await?;
     verify_csrf(&session, &form.csrf)?;
-    let board_slug = sqlx::query_scalar::<_, String>(
-        "UPDATE posts p SET locked = NOT p.locked FROM boards b WHERE p.id = $1 AND p.thread_id IS NULL AND p.approved_at IS NOT NULL AND b.id = p.board_id RETURNING b.slug",
+    let mut transaction = state.pool.begin().await?;
+    let (board_id, board_slug) = sqlx::query_as::<_, (i64, String)>(
+        "UPDATE posts p SET locked = NOT p.locked FROM boards b WHERE p.id = $1 AND p.thread_id IS NULL AND p.approved_at IS NOT NULL AND b.id = p.board_id RETURNING b.id, b.slug",
     )
     .bind(thread_id)
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(|| AppError::not_found("That thread does not exist."))?;
-    state.builder.rebuild_thread(&board_slug, thread_id).await?;
-    state.builder.rebuild_board(&board_slug).await?;
+    publisher::enqueue_thread(&mut transaction, board_id, thread_id).await?;
+    publisher::enqueue_board(&mut transaction, board_id).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(
         &state,
         session.moderator_id,
@@ -950,15 +944,18 @@ async fn toggle_sticky(
     enforce_same_origin(&headers)?;
     let session = require_session(&state, &headers).await?;
     verify_csrf(&session, &form.csrf)?;
-    let board_slug = sqlx::query_scalar::<_, String>(
-        "UPDATE posts p SET sticky = NOT p.sticky FROM boards b WHERE p.id = $1 AND p.thread_id IS NULL AND p.approved_at IS NOT NULL AND b.id = p.board_id RETURNING b.slug",
+    let mut transaction = state.pool.begin().await?;
+    let (board_id, board_slug) = sqlx::query_as::<_, (i64, String)>(
+        "UPDATE posts p SET sticky = NOT p.sticky FROM boards b WHERE p.id = $1 AND p.thread_id IS NULL AND p.approved_at IS NOT NULL AND b.id = p.board_id RETURNING b.id, b.slug",
     )
     .bind(thread_id)
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(|| AppError::not_found("That thread does not exist."))?;
-    state.builder.rebuild_thread(&board_slug, thread_id).await?;
-    state.builder.rebuild_board(&board_slug).await?;
+    publisher::enqueue_thread(&mut transaction, board_id, thread_id).await?;
+    publisher::enqueue_board(&mut transaction, board_id).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(
         &state,
         session.moderator_id,
@@ -1007,12 +1004,14 @@ async fn update_board_settings(
             ));
         }
         let posting_password = posting_password.to_owned();
+        let _password_permit = state.password_permit()?;
         Some(
             tokio::task::spawn_blocking(move || password_hash(&posting_password))
                 .await
                 .context("board password hashing task failed")??,
         )
     };
+    let mut transaction = state.pool.begin().await?;
     let slug = sqlx::query_scalar::<_, String>(
         "UPDATE boards SET read_only = $1, require_approval = $2, posting_password_hash = $3, updated_at = NOW() WHERE id = $4 RETURNING slug",
     )
@@ -1020,19 +1019,12 @@ async fn update_board_settings(
     .bind(require_approval)
     .bind(posting_password_hash.as_deref())
     .bind(board_id)
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(|| AppError::not_found("That board does not exist."))?;
-    state.builder.rebuild_board(&slug).await?;
-    let thread_ids = sqlx::query_scalar::<_, i64>(
-        "SELECT p.id FROM posts p JOIN boards b ON b.id = p.board_id WHERE b.slug = $1 AND p.thread_id IS NULL AND p.approved_at IS NOT NULL ORDER BY p.id",
-    )
-    .bind(&slug)
-    .fetch_all(&state.pool)
-    .await?;
-    for thread_id in thread_ids {
-        state.builder.rebuild_thread(&slug, thread_id).await?;
-    }
+    publisher::enqueue_board_and_threads(&mut transaction, board_id).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(
         &state,
         session.moderator_id,
@@ -1085,17 +1077,20 @@ async fn create_board(
             "A board with that slug already exists.",
         ));
     }
-    sqlx::query(
-        "INSERT INTO boards (slug, title, subtitle, description, position) VALUES ($1,$2,$3,$4,COALESCE((SELECT MAX(position) + 10 FROM boards), 10))",
+    let mut transaction = state.pool.begin().await?;
+    let board_id = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO boards (slug, title, subtitle, description, position) VALUES ($1,$2,$3,$4,COALESCE((SELECT MAX(position) + 10 FROM boards), 10)) RETURNING id",
     )
     .bind(&slug)
     .bind(&title)
     .bind(&subtitle)
     .bind(&description)
-    .execute(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
-    state.builder.rebuild_board(&slug).await?;
-    state.builder.rebuild_home().await?;
+    publisher::enqueue_board(&mut transaction, board_id).await?;
+    publisher::enqueue_home(&mut transaction).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(
         &state,
         session.moderator_id,
@@ -1122,15 +1117,18 @@ async fn create_news(
         ));
     }
     let body_html = format_post_body(&body);
+    let mut transaction = state.pool.begin().await?;
     sqlx::query("INSERT INTO news (subject, body, body_html, author_id, author_name) VALUES ($1,$2,$3,$4,$5)")
         .bind(&subject)
         .bind(&body)
         .bind(&body_html)
         .bind(session.moderator_id)
         .bind(&session.username)
-        .execute(&state.pool)
+        .execute(&mut *transaction)
         .await?;
-    state.builder.rebuild_home().await?;
+    publisher::enqueue_home(&mut transaction).await?;
+    transaction.commit().await?;
+    state.publisher_notify.notify_waiters();
     log_action(&state, session.moderator_id, "publish news", &subject).await?;
     Ok(Redirect::to("/mod/news"))
 }

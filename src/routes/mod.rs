@@ -13,6 +13,7 @@ pub fn router() -> Router<AppState> {
         .route("/healthz", get(public::health))
         .route("/readyz", get(public::ready))
         .route("/banner/{board}", get(public::random_banner))
+        .route("/published", get(public::publishing))
         .route("/post", post(public::create_post))
         .route("/actions", post(public::post_actions))
         .merge(moderator::router())
