@@ -1,5 +1,8 @@
 # Adelia
 
+[![Rust build and test](https://github.com/skystars8/adelia/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/skystars8/adelia/actions/workflows/ci.yml)
+[![Rust dependency audit](https://github.com/skystars8/adelia/actions/workflows/audit.yml/badge.svg?branch=main)](https://github.com/skystars8/adelia/actions/workflows/audit.yml)
+
 Adelia is a fast Rust/PostgreSQL discussion-board engine for hobby and educational communities. It combines the compact flow of a classic independent message board with responsive mobile/desktop layouts, static public pages, modern Rust, PostgreSQL, and a focused moderator interface.
 
 > **Created with AI:** Adelia was designed and implemented by ChatGPT from OpenAI, working from the project owner's requirements, product direction, testing, and repeated feedback. The project intentionally gives ChatGPT clear public credit.
