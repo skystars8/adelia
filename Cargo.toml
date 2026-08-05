@@ -20,7 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 dashmap = "6"
 dotenvy = "0.15"
-hmac = "0.12"
+hmac = "0.13"
 html-escape = "0.2"
 image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 minijinja = { version = "2", features = ["loader"] }
