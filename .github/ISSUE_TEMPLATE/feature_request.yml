@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a focused improvement for hobby or educational communities
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or operator problem needs solving?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe behavior and user flow rather than only an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true
+  - type: textarea
+    id: architecture
+    attributes:
+      label: Static-read, privacy, and moderation impact
+      description: Explain whether this adds dynamic reads, stores new data, affects IP privacy, or changes moderator workload.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This request is appropriate for a general hobby or educational community, not only one private site.
+          required: true

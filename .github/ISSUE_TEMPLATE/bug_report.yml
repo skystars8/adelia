@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a reproducible problem in Adelia
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve Adelia. Remove passwords, APP_SECRET, cookies, private posts/uploads, database dumps, and VPS credentials. Security vulnerabilities must use private reporting described in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Adelia version
+      description: Release tag or commit hash.
+      placeholder: 0.1.0 or commit hash
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation type
+      options:
+        - Windows with Cargo
+        - Linux with Cargo
+        - Docker Compose
+        - Ubuntu VPS/systemd/Nginx
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: Windows 11, Ubuntu 24.04, etc.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Rust and PostgreSQL versions
+      placeholder: rustc 1.x; PostgreSQL 17
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Required only for a visible or interactive problem.
+      placeholder: Firefox, Chrome, Safari, version
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Give the smallest exact sequence that reproduces the problem.
+      placeholder: |
+        1. Start Adelia with...
+        2. Open...
+        3. Submit...
+        4. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Paste only the relevant section after removing secrets and private data.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I reproduced this on the latest release or default branch.
+          required: true
+        - label: I removed secrets and private data.
+          required: true
+        - label: This is not a security vulnerability requiring private reporting.
+          required: true
